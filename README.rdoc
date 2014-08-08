@@ -1,3 +1,7 @@
-= project_publicity
+=Redmine Project Publicity
 
-Description goes here
+Simple and stupid Plugin to remove the permission to create public Projects from users. Only Admins can create public projects or switch projects into public state.
+
+Please name the directory project_publicity
+
+Tested on Redmine 2.5.x
