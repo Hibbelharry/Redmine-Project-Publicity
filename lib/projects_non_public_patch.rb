@@ -1,24 +1,21 @@
+# replaces methods in projects_controller.rb
 module ProjectPublicity
   module ProjectsNonPublicPatch
     def self.included(base)
       base.class_eval do
         def create
-          @issue_custom_fields = IssueCustomField.sorted.all
-          @trackers = Tracker.sorted.all
+          @issue_custom_fields = IssueCustomField.sorted.to_a
+          @trackers = Tracker.sorted.to_a
           @project = Project.new
           @project.safe_attributes = params[:project]
-        
+
           unless User.current.admin?
             @project.is_public = 0
           end
-      
-          if validate_parent_id && @project.save
-            @project.set_allowed_parent!(params[:project]['parent_id']) if params[:project].has_key?('parent_id')
-            # Add current user as a project member if current user is not admin
+
+          if @project.save
             unless User.current.admin?
-              r = Role.givable.find_by_id(Setting.new_project_user_role_id.to_i) || Role.givable.first
-              m = Member.new(:user => User.current, :roles => [r])
-              @project.members << m
+              @project.add_default_member(User.current)
             end
             respond_to do |format|
               format.html {
@@ -36,37 +33,36 @@ module ProjectPublicity
             respond_to do |format|
               format.html { render :action => 'new' }
               format.api  { render_validation_errors(@project) }
-           end
-          end
-            
-          def update
-            @project.safe_attributes = params[:project]
-            
-            unless User.current.admin?
-              @project.is_public = 0 
             end
-            
-            if validate_parent_id && @project.save
-              @project.set_allowed_parent!(params[:project]['parent_id']) if params[:project].has_key?('parent_id')
-              respond_to do |format|
-                format.html {
-                  flash[:notice] = l(:notice_successful_update)
-                  redirect_to settings_project_path(@project)
-                }
-                format.api  { render_api_ok }
-              end
-            else
-              respond_to do |format|
-                format.html {
-                  settings
-                  render :action => 'settings'
-                }
-                format.api  { render_validation_errors(@project) }
-              end
+          end
+        end
+
+        def update
+          @project.safe_attributes = params[:project]
+
+          unless User.current.admin?
+            @project.is_public = 0
+          end
+
+          if @project.save
+            respond_to do |format|
+              format.html {
+                flash[:notice] = l(:notice_successful_update)
+                redirect_to settings_project_path(@project)
+              }
+              format.api  { render_api_ok }
+            end
+          else
+            respond_to do |format|
+              format.html {
+                settings
+                render :action => 'settings'
+              }
+              format.api  { render_validation_errors(@project) }
             end
           end
         end
       end
     end
-  end 
+  end
 end
